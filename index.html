@@ -1,193 +1,335 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>OSWALDO ARENA</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;overflow:hidden;background:#101820;color:white;font-family:Arial}
-canvas{display:block}
-#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;font-weight:bold;text-shadow:0 2px 5px black}
-.panel{background:#102333dd;border:1px solid #54cfff;border-radius:10px;padding:10px}
-#controls{position:fixed;bottom:25px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:end}
-button{border:2px solid white;border-radius:50%;width:90px;height:90px;background:#d52e3c;color:white;font-weight:bold;touch-action:none}
-#move{background:#14638a}
-#start{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:auto;height:auto;border-radius:10px;padding:16px 25px;background:#45d9ff;color:#06131c}
-#info{position:fixed;top:80px;left:12px;color:#bfeaff;font-size:12px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>GTA: Zombie Outbreak Open-World</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100%; height: 100%; display: block; }
+        
+        /* Premium UI HUD */
+        #hud { position: absolute; top: 15px; left: 15px; right: 15px; display: flex; justify-content: space-between; pointer-events: none; z-index: 10; }
+        .hud-card { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 12px 20px; color: #fff; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .hud-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: 2px; }
+        .hud-value { font-size: 20px; font-weight: 800; color: #f8fafc; }
+        
+        /* Customization Bar */
+        #customizer { position: absolute; top: 80px; left: 15px; display: flex; flex-direction: column; gap: 8px; z-index: 10; }
+        .select-btn { background: rgba(30, 41, 59, 0.85); border: 1px solid #38bdf8; color: #f8fafc; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; pointer-events: auto; transition: all 0.2s; }
+        .select-btn:hover { background: #38bdf8; color: #0f172a; transform: translateY(-2px); }
+
+        /* Controls UI */
+        #controls-hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255, 255, 255, 0.7); font-size: 13px; text-align: center; pointer-events: none; background: rgba(0,0,0,0.5); padding: 6px 16px; border-radius: 20px; }
+        #action-btn { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #ef4444, #dc2626); border: 2px solid #fca5a5; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
+        #action-btn:active { transform: scale(0.92); }
+    </style>
 </head>
 <body>
-<div id="hud">
- <div class="panel">OSWALDO ARENA<br>❤️ <span id="hp">100</span></div>
- <div class="panel">KILLS: <span id="kills">0</span></div>
-</div>
-<div id="info">SURVIVE THE ZOMBIE OUTBREAK</div>
-<div id="controls">
- <button id="move">MOVE</button>
- <button id="fire">SHOOT</button>
-</div>
-<button id="start">ENTER THE CITY</button>
 
-<script type="module">
-import * as THREE from
-"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+    <div id="hud">
+        <div class="hud-card">
+            <div class="hud-title">Health</div>
+            <div class="hud-value" id="hp-val" style="color: #4ade80;">100 %</div>
+        </div>
+        <div class="hud-card">
+            <div class="hud-title">Zombies Eliminated</div>
+            <div class="hud-value" id="score-val" style="color: #f43f5e;">0</div>
+        </div>
+    </div>
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x8295a8);
-scene.fog=new THREE.Fog(0x8295a8,25,100);
+    <div id="customizer">
+        <button class="select-btn" onclick="cycleOutfit()">Shirt Color: <span id="outfit-label">Cyber Blue</span></button>
+        <button class="select-btn" onclick="cycleWeapon()">Weapon: <span id="weapon-label">Plasma Rifle</span></button>
+        <button class="select-btn" onclick="cycleSpell()">Magic Spell: <span id="spell-label">Inferno Nova</span></button>
+    </div>
 
-const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,200);
-const renderer=new THREE.WebGLRenderer({antialias:false});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-document.body.appendChild(renderer.domElement);
+    <div id="controls-hint">Drag screen to look left/right • WASD/Touch to Move • Tap Spell to Cast</div>
+    <div id="action-btn" onclick="castSpell()">SPELL</div>
 
-scene.add(new THREE.HemisphereLight(0xffffff,0x344433,2));
-const sun=new THREE.DirectionalLight(0xffffff,2);
-sun.position.set(10,20,10);scene.add(sun);
+    <div id="canvas-container"></div>
 
-const material=(c)=>new THREE.MeshStandardMaterial({color:c});
-function cube(w,h,d,c,x,y,z){
- const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material(c));
- m.position.set(x,y,z);scene.add(m);return m;
-}
+    <!-- Three.js Engine & Orbit Controls -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
 
-cube(200,1,200,0x424b4e,0,-.7,0);
+    <script type="module">
+        import * as THREE from 'three';
 
-// City streets
-for(let i=-4;i<=4;i++){
- cube(9,.05,200,0x20262b,i*22,-.16,0);
- cube(200,.05,9,0x20262b,0,-.16,i*22);
-}
+        // --- 1. SCENE & GRAPHICS SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050811);
+        scene.fog = new THREE.FogExp2(0x050811, 0.015);
 
-// Buildings
-for(let x=-4;x<=4;x++){
- for(let z=-4;z<=4;z++){
-  if(Math.abs(x)<1&&Math.abs(z)<1)continue;
-  const h=5+Math.random()*15;
-  cube(9,h,9,[0x667786,0x71675f,0x465566][Math.floor(Math.random()*3)],
-  x*22+(Math.random()-.5)*4,h/2-.1,z*22+(Math.random()-.5)*4);
- }
-}
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
 
-// Player
-const player=new THREE.Group();scene.add(player);
-const body=new THREE.Mesh(new THREE.BoxGeometry(1,1.5,.7),material(0x168ac0));
-body.position.y=1;player.add(body);
-const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,10),material(0xd1aa83));
-head.position.y=2;player.add(head);
-const gun=new THREE.Mesh(new THREE.BoxGeometry(.2,.2,1),material(0x171c22));
-gun.position.set(.45,1.2,-.7);player.add(gun);
+        // --- 2. HIGH-QUALITY LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x1e293b, 1.5);
+        scene.add(ambientLight);
 
-let health=100,kills=0,playing=false,move=false,firing=false;
-const zombies=[],bullets=[];
-const clock=new THREE.Clock();
+        const moonLight = new THREE.DirectionalLight(0x38bdf8, 2.5);
+        moonLight.position.set(50, 100, 50);
+        moonLight.castShadow = true;
+        moonLight.shadow.mapSize.width = 2048;
+        moonLight.shadow.mapSize.height = 2048;
+        moonLight.shadow.camera.near = 0.5;
+        moonLight.shadow.camera.far = 200;
+        moonLight.shadow.camera.left = -50;
+        moonLight.shadow.camera.right = 50;
+        moonLight.shadow.camera.top = 50;
+        moonLight.shadow.camera.bottom = -50;
+        scene.add(moonLight);
 
-function zombie(){
- const a=Math.random()*Math.PI*2,d=15+Math.random()*12;
- const g=new THREE.Group();
- const b=new THREE.Mesh(new THREE.BoxGeometry(.8,1.3,.6),material(0x61874c));
- b.position.y=.8;g.add(b);
- const h=new THREE.Mesh(new THREE.SphereGeometry(.3,10,8),material(0x78965c));
- h.position.y=1.7;g.add(h);
- g.position.set(player.position.x+Math.sin(a)*d,0,
- player.position.z+Math.cos(a)*d);
- scene.add(g);zombies.push({g,hp:2,attack:0});
-}
+        // --- 3. OPEN WORLD GENERATION ---
+        const worldSize = 300;
+        const groundGeo = new THREE.PlaneGeometry(worldSize, worldSize);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, metalness: 0.2 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
 
-function shoot(){
- if(!playing)return;
- const dir=new THREE.Vector3(0,0,-1).applyQuaternion(player.quaternion);
- const origin=player.position.clone().add(new THREE.Vector3(0,1.3,0));
- const target=zombies.find(z=>z.g.position.distanceTo(player.position)<25);
- if(target){
-  target.hp--;
-  if(target.hp<=0){
-   scene.remove(target.g);
-   zombies.splice(zombies.indexOf(target),1);
-   kills++;
-   document.getElementById("kills").textContent=kills;
-  }
- }
- const m=new THREE.Mesh(new THREE.SphereGeometry(.12,6,6),material(0xffe16b));
- m.position.copy(origin);scene.add(m);
- bullets.push({m,dir,life:.5});
-}
+        // Buildings & Neon Lights
+        const buildingGroup = new THREE.Group();
+        const colors = [0xef4444, 0x3b82f6, 0x10b981, 0x8b5cf6, 0xf59e0b];
+        
+        for (let i = 0; i < 60; i++) {
+            const w = 10 + Math.random() * 15;
+            const h = 20 + Math.random() * 50;
+            const d = 10 + Math.random() * 15;
+            
+            const bGeo = new THREE.BoxGeometry(w, h, d);
+            const bMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.7 });
+            const building = new THREE.Mesh(bGeo, bMat);
+            
+            let x = (Math.random() - 0.5) * (worldSize - 40);
+            let z = (Math.random() - 0.5) * (worldSize - 40);
+            if(Math.abs(x) < 20 && Math.abs(z) < 20) continue; // Keep center clear
+            
+            building.position.set(x, h/2, z);
+            building.castShadow = true;
+            building.receiveShadow = true;
+            buildingGroup.add(building);
 
-function reset(){
- health=100;kills=0;playing=true;
- player.position.set(0,0,0);player.rotation.y=0;
- zombies.forEach(z=>scene.remove(z.g));zombies.length=0;
- bullets.forEach(b=>scene.remove(b.m));bullets.length=0;
- for(let i=0;i<5;i++)zombie();
- document.getElementById("hp").textContent=health;
- document.getElementById("kills").textContent=0;
- document.getElementById("start").style.display="none";
-}
+            // Neon roof lights
+            const lightColor = colors[Math.floor(Math.random() * colors.length)];
+            const pLight = new THREE.PointLight(lightColor, 3, 30);
+            pLight.position.set(x, h + 2, z);
+            buildingGroup.add(pLight);
+        }
+        scene.add(buildingGroup);
 
-document.getElementById("start").onclick=reset;
-document.getElementById("move").onpointerdown=()=>move=true;
-document.getElementById("move").onpointerup=()=>move=false;
-document.getElementById("move").onpointercancel=()=>move=false;
-document.getElementById("fire").onpointerdown=()=>firing=true;
-document.getElementById("fire").onpointerup=()=>firing=false;
-document.getElementById("fire").onpointercancel=()=>firing=false;
+        // --- 4. PLAYER CHARACTER & WEAPONS ---
+        const playerGroup = new THREE.Group();
+        scene.add(playerGroup);
 
-let spawn=0,fireTime=0;
-function animate(){
- requestAnimationFrame(animate);
- const dt=Math.min(clock.getDelta(),.04);
- if(playing){
-  if(move){
-   player.position.x+=Math.sin(player.rotation.y)*5*dt;
-   player.position.z-=Math.cos(player.rotation.y)*5*dt;
-  }
-  spawn-=dt;fireTime-=dt;
-  if(spawn<=0&&zombies.length<12){zombie();spawn=2.5;}
-  if(firing&&fireTime<=0){shoot();fireTime=.25;}
+        // Body
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.4, 1.6, 16);
+        const outfitMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5, roughness: 0.3 });
+        const playerBody = new THREE.Mesh(bodyGeo, outfitMat);
+        playerBody.position.y = 1;
+        playerBody.castShadow = true;
+        playerGroup.add(playerBody);
 
-  zombies.forEach(z=>{
-   const dx=player.position.x-z.g.position.x;
-   const dz=player.position.z-z.g.position.z;
-   const d=Math.hypot(dx,dz)||1;
-   if(d>1.4){
-    z.g.position.x+=dx/d*1.5*dt;
-    z.g.position.z+=dz/d*1.5*dt;
-    z.g.lookAt(player.position.x,0,player.position.z);
-   }else{
-    z.attack-=dt;
-    if(z.attack<=0){
-     health-=10;z.attack=.8;
-     document.getElementById("hp").textContent=Math.max(0,health);
-     if(health<=0){
-      playing=false;
-      const s=document.getElementById("start");
-      s.textContent="PLAY AGAIN";s.style.display="block";
-     }
-    }
-   }
-  });
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+        const playerHead = new THREE.Mesh(headGeo, headMat);
+        playerHead.position.y = 2.0;
+        playerGroup.add(playerHead);
 
-  for(let i=bullets.length-1;i>=0;i--){
-   const b=bullets[i];b.m.position.addScaledVector(b.dir,45*dt);
-   b.life-=dt;
-   if(b.life<=0){scene.remove(b.m);bullets.splice(i,1);}
-  }
- }
- const offset=new THREE.Vector3(0,6,10).applyQuaternion(player.quaternion);
- camera.position.lerp(player.position.clone().add(offset),.08);
- camera.lookAt(player.position.x,1,player.position.z);
- renderer.render(scene,camera);
-}
-animate();
+        // Weapon Slot
+        const weaponGroup = new THREE.Group();
+        weaponGroup.position.set(0.6, 1.2, 0.3);
+        playerGroup.add(weaponGroup);
 
-addEventListener("resize",()=>{
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
-});
-</script>
+        const weaponMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9, roughness: 0.1 });
+        const weaponMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 1), weaponMat);
+        weaponGroup.add(weaponMesh);
+
+        // --- 5. SMOOTH TOUCH / DRAG CAMERA & MOVEMENT ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngleX = 0;
+        let cameraAngleY = 0.3;
+
+        function onPointerDown(e) {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX || e.touches[0].clientX, y: e.clientY || e.touches[0].clientY };
+        }
+
+        function onPointerMove(e) {
+            if (!isDragging) return;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const deltaX = clientX - previousMousePosition.x;
+            const deltaY = clientY - previousMousePosition.y;
+
+            cameraAngleX -= deltaX * 0.005;
+            cameraAngleY = Math.max(0.1, Math.min(Math.PI / 3, cameraAngleY + deltaY * 0.005));
+
+            previousMousePosition = { x: clientX, y: clientY };
+        }
+
+        function onPointerUp() { isDragging = false; }
+
+        window.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('touchstart', onPointerDown);
+        window.addEventListener('touchmove', onPointerMove);
+        window.addEventListener('touchend', onPointerUp);
+
+        // Keyboard Controls
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // --- 6. ZOMBIE AI SYSTEM ---
+        const zombies = [];
+        const zombieGeo = new THREE.CylinderGeometry(0.4, 0.3, 1.5, 12);
+        const zombieMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.9 });
+
+        function spawnZombie() {
+            if (zombies.length > 25) return;
+            const zombie = new THREE.Mesh(zombieGeo, zombieMat);
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 30 + Math.random() * 40;
+            zombie.position.set(
+                playerGroup.position.x + Math.cos(angle) * dist,
+                0.75,
+                playerGroup.position.z + Math.sin(angle) * dist
+            );
+            zombie.castShadow = true;
+            scene.add(zombie);
+            zombies.push(zombie);
+        }
+        setInterval(spawnZombie, 1500);
+
+        // --- 7. CUSTOMIZATION & SPELLS INTERACTION ---
+        const outfits = [{ name: "Cyber Blue", color: 0x38bdf8 }, { name: "Stealth Black", color: 0x1e293b }, { name: "Crimson Red", color: 0xef4444 }];
+        let outfitIdx = 0;
+        window.cycleOutfit = () => {
+            outfitIdx = (outfitIdx + 1) % outfits.length;
+            outfitMat.color.setHex(outfits[outfitIdx].color);
+            document.getElementById('outfit-label').innerText = outfits[outfitIdx].name;
+        };
+
+        const weapons = ["Plasma Rifle", "Shotgun", "Laser Cannon"];
+        let weaponIdx = 0;
+        window.cycleWeapon = () => {
+            weaponIdx = (weaponIdx + 1) % weapons.length;
+            document.getElementById('weapon-label').innerText = weapons[weaponIdx];
+        };
+
+        const spells = ["Inferno Nova", "Frost Field", "Lightning Ring"];
+        let spellIdx = 0;
+        window.cycleSpell = () => {
+            spellIdx = (spellIdx + 1) % spells.length;
+            document.getElementById('spell-label').innerText = spells[spellIdx];
+        };
+
+        let score = 0;
+        window.castSpell = () => {
+            // Visual Blast Effect
+            const spellGeo = new THREE.RingGeometry(0.1, 1, 32);
+            const spellColors = [0xff4500, 0x00ffff, 0x9400d3];
+            const spellMat = new THREE.MeshBasicMaterial({ color: spellColors[spellIdx], side: THREE.DoubleSide, transparent: true, opacity: 1 });
+            const ring = new THREE.Mesh(spellGeo, spellMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.copy(playerGroup.position);
+            ring.position.y = 0.1;
+            scene.add(ring);
+
+            // Blast Animation & Zombie Hits
+            let scale = 1;
+            const expand = setInterval(() => {
+                scale += 1.5;
+                ring.scale.set(scale, scale, scale);
+                ring.material.opacity -= 0.05;
+
+                // Hit detection
+                for (let i = zombies.length - 1; i >= 0; i--) {
+                    if (zombies[i].position.distanceTo(playerGroup.position) < scale) {
+                        scene.remove(zombies[i]);
+                        zombies.splice(i, 1);
+                        score += 10;
+                        document.getElementById('score-val').innerText = score;
+                    }
+                }
+
+                if (ring.material.opacity <= 0) {
+                    clearInterval(expand);
+                    scene.remove(ring);
+                }
+            }, 30);
+        };
+
+        // --- 8. GAME LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // Player Movement relative to Camera
+            const moveSpeed = 12 * delta;
+            let moveX = 0, moveZ = 0;
+
+            if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+            if (moveX !== 0 || moveZ !== 0) {
+                const moveVec = new THREE.Vector3(moveX, 0, moveZ).normalize();
+                moveVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAngleX);
+                
+                playerGroup.position.addScaledVector(moveVec, moveSpeed);
+                playerGroup.rotation.y = Math.atan2(moveVec.x, moveVec.z);
+            }
+
+            // Smooth Third-Person Camera Follow
+            const camDist = 12;
+            camera.position.x = playerGroup.position.x + camDist * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.position.y = playerGroup.position.y + camDist * Math.sin(cameraAngleY);
+            camera.position.z = playerGroup.position.z + camDist * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.2, playerGroup.position.z);
+
+            // Zombie AI Chasing Player
+            zombies.forEach(zombie => {
+                const dir = new THREE.Vector3().subVectors(playerGroup.position, zombie.position).normalize();
+                zombie.position.addScaledVector(dir, 3.5 * delta);
+                zombie.lookAt(playerGroup.position.x, zombie.position.y, playerGroup.position.z);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
 </body>
 </html>
